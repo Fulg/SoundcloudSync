@@ -41,6 +41,7 @@ yt-dlp \
   --extract-audio \
   --embed-metadata \
   --embed-thumbnail \
+  --parse-metadata "%(uploader)s:%(meta_album)s" \
   --cache-dir "$CACHE_DIR" \
   --download-archive "$ARCHIVE_FILE" \
   --output "$MUSIC_DIR/%(uploader)s/%(title)s.%(ext)s" \
