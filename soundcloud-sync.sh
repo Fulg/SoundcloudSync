@@ -28,6 +28,7 @@ NAVIDROME_PASS="${NAVIDROME_PASS:-changeme}"
 mkdir -p "$MUSIC_DIR" "$STATE_DIR"
 ARCHIVE_FILE="$STATE_DIR/downloaded.txt"
 LOG_FILE="$STATE_DIR/sync.log"
+CACHE_DIR="$STATE_DIR/cache"
 
 echo "[$(date -Is)] Checking for new tracks..." >> "$LOG_FILE"
 
@@ -42,6 +43,7 @@ yt-dlp \
   --audio-quality 0 \
   --embed-metadata \
   --embed-thumbnail \
+  --cache-dir "$CACHE_DIR" \
   --download-archive "$ARCHIVE_FILE" \
   --output "$MUSIC_DIR/%(uploader)s/%(title)s.%(ext)s" \
   --no-overwrites \
