@@ -8,7 +8,7 @@ RUN apk add --no-cache \
     python3 \
     py3-pip \
     su-exec \
-    && pip3 install --break-system-packages yt-dlp
+    && pip3 install --break-system-packages yt-dlp curl-cffi
 
 COPY soundcloud-sync.sh /usr/local/bin/soundcloud-sync.sh
 COPY entrypoint.sh /entrypoint.sh
