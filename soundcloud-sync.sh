@@ -30,6 +30,16 @@ mkdir -p "$MUSIC_DIR" "$STATE_DIR"
 ARCHIVE_FILE="$STATE_DIR/downloaded.txt"
 LOG_FILE="$STATE_DIR/sync.log"
 CACHE_DIR="$STATE_DIR/cache"
+LOCK_FILE="$STATE_DIR/sync.lock"
+
+# Acquire an exclusive non-blocking lock. If another instance is still running
+# (e.g. a long initial sync) this run exits cleanly rather than racing on the
+# download archive.
+exec 9>"$LOCK_FILE"
+if ! flock -n 9; then
+  echo "[$(date -Is)] Sync already running, skipping this run." >> "$LOG_FILE"
+  exit 0
+fi
 
 echo "[$(date -Is)] Checking for new tracks..." >> "$LOG_FILE"
 

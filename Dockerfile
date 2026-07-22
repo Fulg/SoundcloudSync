@@ -8,6 +8,7 @@ RUN apk add --no-cache \
     python3 \
     py3-pip \
     su-exec \
+    util-linux \
     && pip3 install --break-system-packages yt-dlp curl-cffi
 
 COPY soundcloud-sync.sh /usr/local/bin/soundcloud-sync.sh
