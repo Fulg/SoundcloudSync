@@ -38,13 +38,19 @@ echo "[$(date -Is)] Checking for new tracks..." >> "$LOG_FILE"
 # unless there's genuinely something new.
 NEW_COUNT_BEFORE=$(wc -l < "$ARCHIVE_FILE" 2>/dev/null || echo 0)
 
+if [ -n "$TITLE_FILTER" ]; then
+  OUTPUT_TEMPLATE="$MUSIC_DIR/%(uploader)s/$TITLE_FILTER/%(title)s.%(ext)s"
+else
+  OUTPUT_TEMPLATE="$MUSIC_DIR/%(uploader)s/%(title)s.%(ext)s"
+fi
+
 YTDLP_ARGS=(
   --extract-audio
   --embed-metadata
   --embed-thumbnail
   --cache-dir "$CACHE_DIR"
   --download-archive "$ARCHIVE_FILE"
-  --output "$MUSIC_DIR/%(uploader)s/%(title)s.%(ext)s"
+  --output "$OUTPUT_TEMPLATE"
   --no-overwrites
   --ignore-errors
 )
