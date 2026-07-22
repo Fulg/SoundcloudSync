@@ -27,6 +27,7 @@ The download archive persists between runs so repeat runs are cheap no-ops unles
 | `PGID` | GID to run as | `100` (Unraid `users`) |
 | `UMASK` | File creation mask | `022` |
 | `CRON_SCHEDULE` | Cron expression for sync frequency | `0 */6 * * *` (every 6 hours) |
+| `TITLE_FILTER` | Only download tracks whose title contains this substring; also used as the album name. Leave unset to download all tracks. | — |
 
 5. Click **Deploy the stack**
 

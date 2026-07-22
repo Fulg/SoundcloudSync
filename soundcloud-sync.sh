@@ -22,6 +22,7 @@ STATE_DIR="${STATE_DIR:-/state}"
 NAVIDROME_URL="${NAVIDROME_URL:-http://localhost:4533}"
 NAVIDROME_USER="${NAVIDROME_USER:-admin}"
 NAVIDROME_PASS="${NAVIDROME_PASS:-changeme}"
+TITLE_FILTER="${TITLE_FILTER:-}"
 
 ### ---- END CONFIG ----
 
@@ -37,17 +38,27 @@ echo "[$(date -Is)] Checking for new tracks..." >> "$LOG_FILE"
 # unless there's genuinely something new.
 NEW_COUNT_BEFORE=$(wc -l < "$ARCHIVE_FILE" 2>/dev/null || echo 0)
 
-yt-dlp \
-  --extract-audio \
-  --embed-metadata \
-  --embed-thumbnail \
-  --parse-metadata "%(uploader)s:%(meta_album)s" \
-  --cache-dir "$CACHE_DIR" \
-  --download-archive "$ARCHIVE_FILE" \
-  --output "$MUSIC_DIR/%(uploader)s/%(title)s.%(ext)s" \
-  --no-overwrites \
-  --ignore-errors \
-  "$SOUNDCLOUD_URL" >> "$LOG_FILE" 2>&1
+YTDLP_ARGS=(
+  --extract-audio
+  --embed-metadata
+  --embed-thumbnail
+  --cache-dir "$CACHE_DIR"
+  --download-archive "$ARCHIVE_FILE"
+  --output "$MUSIC_DIR/%(uploader)s/%(title)s.%(ext)s"
+  --no-overwrites
+  --ignore-errors
+)
+
+if [ -n "$TITLE_FILTER" ]; then
+  YTDLP_ARGS+=(
+    --match-filter "title*=$TITLE_FILTER"
+    --parse-metadata "${TITLE_FILTER}:%(meta_album)s"
+  )
+else
+  YTDLP_ARGS+=(--parse-metadata "%(uploader)s:%(meta_album)s")
+fi
+
+yt-dlp "${YTDLP_ARGS[@]}" "$SOUNDCLOUD_URL" >> "$LOG_FILE" 2>&1
 
 NEW_COUNT_AFTER=$(wc -l < "$ARCHIVE_FILE" 2>/dev/null || echo 0)
 NEW_TRACKS=$((NEW_COUNT_AFTER - NEW_COUNT_BEFORE))
