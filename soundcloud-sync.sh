@@ -39,8 +39,6 @@ NEW_COUNT_BEFORE=$(wc -l < "$ARCHIVE_FILE" 2>/dev/null || echo 0)
 
 yt-dlp \
   --extract-audio \
-  --audio-format mp3 \
-  --audio-quality 0 \
   --embed-metadata \
   --embed-thumbnail \
   --cache-dir "$CACHE_DIR" \
