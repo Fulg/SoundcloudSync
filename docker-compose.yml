@@ -1,0 +1,14 @@
+services:
+  soundcloud-sync:
+    build: .
+    container_name: soundcloud-sync
+    restart: unless-stopped
+    environment:
+      - SOUNDCLOUD_URL=https://soundcloud.com/ARTIST_NAME/tracks
+      - NAVIDROME_URL=http://192.168.1.x:4533   # replace with your Unraid IP
+      - NAVIDROME_USER=admin
+      - NAVIDROME_PASS=changeme
+      - CRON_SCHEDULE=0 */6 * * *               # every 6 hours; adjust as needed
+    volumes:
+      - /mnt/user/music/SoundCloud:/music        # path to your Navidrome music folder
+      - /mnt/user/appdata/soundcloud-sync:/state # persistent state (archive + logs)
