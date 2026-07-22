@@ -23,6 +23,7 @@ NAVIDROME_URL="${NAVIDROME_URL:-http://localhost:4533}"
 NAVIDROME_USER="${NAVIDROME_USER:-admin}"
 NAVIDROME_PASS="${NAVIDROME_PASS:-changeme}"
 TITLE_FILTER="${TITLE_FILTER:-}"
+DATE_AFTER="${DATE_AFTER:-}"
 
 ### ---- END CONFIG ----
 
@@ -67,6 +68,10 @@ YTDLP_ARGS=(
   --no-overwrites
   --ignore-errors
 )
+
+if [ -n "$DATE_AFTER" ]; then
+  YTDLP_ARGS+=(--dateafter "$DATE_AFTER")
+fi
 
 if [ -n "$TITLE_FILTER" ]; then
   YTDLP_ARGS+=(

@@ -28,6 +28,7 @@ The download archive persists between runs so repeat runs are cheap no-ops unles
 | `UMASK` | File creation mask | `022` |
 | `CRON_SCHEDULE` | Cron expression for sync frequency | `0 */6 * * *` (every 6 hours) |
 | `TITLE_FILTER` | Only download tracks whose title contains this substring; also used as the album name. Leave unset to download all tracks. | — |
+| `DATE_AFTER` | Only download tracks uploaded after this date. Accepts absolute dates (`20240101`) or relative ones (`today-6months`, `today-1year`). Leave unset for no limit. | — |
 
 5. Click **Deploy the stack**
 
