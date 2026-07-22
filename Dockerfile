@@ -7,6 +7,7 @@ RUN apk add --no-cache \
     jq \
     python3 \
     py3-pip \
+    su-exec \
     && pip3 install --break-system-packages yt-dlp
 
 COPY soundcloud-sync.sh /usr/local/bin/soundcloud-sync.sh
@@ -21,6 +22,8 @@ ENV SOUNDCLOUD_URL="https://soundcloud.com/ARTIST_NAME/tracks" \
     NAVIDROME_URL="http://localhost:4533" \
     NAVIDROME_USER="admin" \
     NAVIDROME_PASS="changeme" \
-    CRON_SCHEDULE="0 */6 * * *"
+    CRON_SCHEDULE="0 */6 * * *" \
+    PUID=99 \
+    PGID=100
 
 ENTRYPOINT ["/entrypoint.sh"]
