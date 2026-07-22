@@ -24,6 +24,7 @@ ENV SOUNDCLOUD_URL="https://soundcloud.com/ARTIST_NAME/tracks" \
     NAVIDROME_PASS="changeme" \
     CRON_SCHEDULE="0 */6 * * *" \
     PUID=99 \
-    PGID=100
+    PGID=100 \
+    UMASK=022
 
 ENTRYPOINT ["/entrypoint.sh"]

@@ -6,6 +6,7 @@ services:
     environment:
       - PUID=99                                    # run as this user ID (Unraid default: nobody)
       - PGID=100                                   # run as this group ID (Unraid default: users)
+      - UMASK=022                                  # file creation mask (022 = files 644, dirs 755)
       - SOUNDCLOUD_URL=https://soundcloud.com/ARTIST_NAME/tracks
       - NAVIDROME_URL=http://192.168.1.x:4533      # replace with your Unraid IP
       - NAVIDROME_USER=admin
