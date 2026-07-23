@@ -120,7 +120,7 @@ else
   YTDLP_ARGS+=(--parse-metadata "%(uploader)s:%(meta_album)s")
 fi
 
-yt-dlp "${YTDLP_ARGS[@]}" "$SOUNDCLOUD_URL" >> "$LOG_FILE" 2>&1
+yt-dlp "${YTDLP_ARGS[@]}" "$SOUNDCLOUD_URL" >> "$LOG_FILE" 2>&1 || true
 
 # When splitting chapters, yt-dlp leaves the intermediate file in place and
 # embeds the episode title in all chapter files instead of the chapter title.
@@ -142,7 +142,7 @@ if [ -n "$SPLIT_CHAPTERS" ]; then
         title="${BASH_REMATCH[2]}"
         tmp="${fpath}.tmp.${ext}"
         if ffmpeg -y -loglevel error -i "$fpath" -map 0 -c copy \
-              -metadata title="$title" -metadata tracknumber="$track" "$tmp" 2>>"$LOG_FILE"; then
+              -metadata title="$title" -metadata track="$track" "$tmp" 2>>"$LOG_FILE"; then
           mv "$tmp" "$fpath"
           echo "[$(date -Is)] Fixed: track=$track title=$title" >> "$LOG_FILE"
         else
