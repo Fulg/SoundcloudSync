@@ -17,7 +17,7 @@ The download archive persists between runs so repeat runs are cheap no-ops unles
 
 | Variable | Description | Default |
 |---|---|---|
-| `SOUNDCLOUD_URL` | Artist tracks URL (e.g. `https://soundcloud.com/artist/tracks`) | — |
+| `SOUNDCLOUD_URL` | SoundCloud artist page or YouTube playlist URL | — |
 | `NAVIDROME_URL` | Navidrome base URL | `http://localhost:4533` |
 | `NAVIDROME_USER` | Navidrome username | `admin` |
 | `NAVIDROME_PASS` | Navidrome password | — |
@@ -29,6 +29,7 @@ The download archive persists between runs so repeat runs are cheap no-ops unles
 | `CRON_SCHEDULE` | Cron expression for sync frequency | `0 */6 * * *` (every 6 hours) |
 | `TITLE_FILTER` | Only download tracks whose title contains this substring; also used as the album name. Leave unset to download all tracks. | — |
 | `DATE_AFTER` | Only download tracks uploaded after this date. Accepts absolute dates (`20240101`) or relative ones (`today-6months`, `today-1year`). Leave unset for no limit. | — |
+| `SPLIT_CHAPTERS` | Set to any non-empty value to split each download into one audio file per chapter using embedded timestamps. Useful for YouTube DJ mixes where each chapter is a song. Leave unset for SoundCloud or sources without chapters. | — |
 
 5. Click **Deploy the stack**
 

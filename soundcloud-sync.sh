@@ -1,10 +1,13 @@
 #!/usr/bin/env bash
 #
-# soundcloud-sync.sh
+# sync.sh
 #
-# Polls a SoundCloud artist's page for new tracks, downloads any that aren't
-# already in the archive, drops them into your Navidrome music folder, and
-# triggers a rescan. Meant to be run periodically via cron.
+# Polls a SoundCloud artist page or YouTube playlist for new tracks, downloads
+# any that aren't already in the archive, drops them into your Navidrome music
+# folder, and triggers a rescan. Meant to be run periodically via cron.
+#
+# When SPLIT_CHAPTERS=true, each downloaded video is split into one audio file
+# per chapter using embedded timestamps (useful for YouTube DJ mixes).
 #
 # Requirements:
 #   - yt-dlp   (pip install -U yt-dlp   or  brew install yt-dlp)
@@ -24,6 +27,7 @@ NAVIDROME_USER="${NAVIDROME_USER:-admin}"
 NAVIDROME_PASS="${NAVIDROME_PASS:-changeme}"
 TITLE_FILTER="${TITLE_FILTER:-}"
 DATE_AFTER="${DATE_AFTER:-}"
+SPLIT_CHAPTERS="${SPLIT_CHAPTERS:-}"
 
 ### ---- END CONFIG ----
 
@@ -49,11 +53,19 @@ echo "[$(date -Is)] Checking for new tracks..." >> "$LOG_FILE"
 # unless there's genuinely something new.
 NEW_COUNT_BEFORE=$(wc -l < "$ARCHIVE_FILE" 2>/dev/null || echo 0)
 
-if [ -n "$TITLE_FILTER" ]; then
-  # All matched tracks share one folder; disc number differentiates episodes.
+if [ -n "$SPLIT_CHAPTERS" ]; then
+  if [ -n "$TITLE_FILTER" ]; then
+    # e.g. /music/Above & Beyond/Group Therapy/Group Therapy 686 (...)/01 - Song Title.m4a
+    OUTPUT_TEMPLATE="$MUSIC_DIR/%(uploader)s/$TITLE_FILTER/%(title)s/%(section_number)02d - %(section_title)s.%(ext)s"
+  else
+    # e.g. /music/Above & Beyond/Group Therapy 686 (...)/01 - Song Title.m4a
+    OUTPUT_TEMPLATE="$MUSIC_DIR/%(uploader)s/%(title)s/%(section_number)02d - %(section_title)s.%(ext)s"
+  fi
+elif [ -n "$TITLE_FILTER" ]; then
   # e.g. /music/Above & Beyond/Group Therapy/Group Therapy 686 (...).m4a
   OUTPUT_TEMPLATE="$MUSIC_DIR/%(uploader)s/$TITLE_FILTER/%(title)s.%(ext)s"
 else
+  # e.g. /music/Above & Beyond/Some Track.m4a
   OUTPUT_TEMPLATE="$MUSIC_DIR/%(uploader)s/%(title)s.%(ext)s"
 fi
 
@@ -71,6 +83,13 @@ YTDLP_ARGS=(
 
 if [ -n "$DATE_AFTER" ]; then
   YTDLP_ARGS+=(--dateafter "$DATE_AFTER")
+fi
+
+if [ -n "$SPLIT_CHAPTERS" ]; then
+  YTDLP_ARGS+=(
+    --split-chapters
+    --parse-metadata "%(section_number)s:%(meta_track)s"
+  )
 fi
 
 if [ -n "$TITLE_FILTER" ]; then

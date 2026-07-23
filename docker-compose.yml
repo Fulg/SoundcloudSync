@@ -14,6 +14,7 @@ services:
       - CRON_SCHEDULE=${CRON_SCHEDULE:-0 */6 * * *}
       - TITLE_FILTER=${TITLE_FILTER:-}
       - DATE_AFTER=${DATE_AFTER:-}
+      - SPLIT_CHAPTERS=${SPLIT_CHAPTERS:-}
     volumes:
       - ${MUSIC_PATH:-/mnt/user/music/SoundCloud}:/music
       - ${STATE_PATH:-/mnt/user/appdata/soundcloud-sync}:/state
