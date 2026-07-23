@@ -78,7 +78,6 @@ fi
 
 YTDLP_ARGS=(
   --embed-metadata
-  --embed-thumbnail
   --cache-dir "$CACHE_DIR"
   --download-archive "$ARCHIVE_FILE"
   --output "$OUTPUT_TEMPLATE"
@@ -89,10 +88,11 @@ YTDLP_ARGS=(
 
 if [ -n "$SPLIT_CHAPTERS" ]; then
   # Download audio-only directly — avoids the extract-audio/split-chapters ordering
-  # issue where ffmpeg can't split a mutagen-modified .opus file back into .opus chapters
+  # issue where ffmpeg can't split a mutagen-modified .opus file back into .opus chapters.
+  # --embed-thumbnail is excluded: yt-dlp's thumbnail embedder does not support .webm.
   YTDLP_ARGS+=(--format "bestaudio")
 else
-  YTDLP_ARGS+=(--extract-audio)
+  YTDLP_ARGS+=(--extract-audio --embed-thumbnail)
 fi
 
 if [ -n "$PLAYLIST_REVERSE" ]; then
@@ -120,35 +120,45 @@ else
   YTDLP_ARGS+=(--parse-metadata "%(uploader)s:%(meta_album)s")
 fi
 
-SCRIPT_START=$(date +%s)
 yt-dlp "${YTDLP_ARGS[@]}" "$SOUNDCLOUD_URL" >> "$LOG_FILE" 2>&1
 
 # When splitting chapters, yt-dlp leaves the intermediate file in place and
-# embeds the episode title (not the chapter title) in each chapter file's
-# metadata. Fix both: delete the intermediate file and re-mux each chapter
-# file with the correct title and track number parsed from its filename.
+# embeds the episode title in all chapter files instead of the chapter title.
+# Fix both by using the intermediate file as a trigger: it exists iff the
+# episode was just downloaded and not yet post-processed. Re-mux each chapter
+# with the correct title and track number (parsed from the filename), then
+# delete the intermediate so subsequent runs skip this episode.
 if [ -n "$SPLIT_CHAPTERS" ]; then
-  while IFS= read -r -d '' fpath; do
-    stem=$(basename "${fpath%.*}")
-    dir_name=$(basename "$(dirname "$fpath")")
-    ext="${fpath##*.}"
-    if [ "$stem" = "$dir_name" ]; then
-      echo "[$(date -Is)] Removing intermediate: $fpath" >> "$LOG_FILE"
-      rm -f "$fpath"
-    elif [ "$(stat -c %Y "$fpath" 2>/dev/null || echo 0)" -ge "$SCRIPT_START" ] \
-         && [[ "$stem" =~ ^([0-9]{2})\ -\ (.+)$ ]]; then
-      track=$((10#${BASH_REMATCH[1]}))
-      title="${BASH_REMATCH[2]}"
-      tmp="${fpath}.tmp.${ext}"
-      if ffmpeg -y -loglevel error -i "$fpath" -map 0 -c copy \
-            -metadata title="$title" -metadata tracknumber="$track" "$tmp" 2>>"$LOG_FILE"; then
-        mv "$tmp" "$fpath"
-        echo "[$(date -Is)] Fixed metadata: track=$track title=$title" >> "$LOG_FILE"
-      else
-        rm -f "$tmp"
+  while IFS= read -r -d '' intermediate; do
+    dir=$(dirname "$intermediate")
+    dir_name=$(basename "$dir")
+    ext="${intermediate##*.}"
+    echo "[$(date -Is)] Fixing chapters in: $dir_name" >> "$LOG_FILE"
+    while IFS= read -r -d '' fpath; do
+      stem=$(basename "${fpath%.*}")
+      [ "$stem" = "$dir_name" ] && continue
+      if [[ "$stem" =~ ^([0-9]{2})\ -\ (.+)$ ]]; then
+        track=$((10#${BASH_REMATCH[1]}))
+        title="${BASH_REMATCH[2]}"
+        tmp="${fpath}.tmp.${ext}"
+        if ffmpeg -y -loglevel error -i "$fpath" -map 0 -c copy \
+              -metadata title="$title" -metadata tracknumber="$track" "$tmp" 2>>"$LOG_FILE"; then
+          mv "$tmp" "$fpath"
+          echo "[$(date -Is)] Fixed: track=$track title=$title" >> "$LOG_FILE"
+        else
+          rm -f "$tmp"
+        fi
       fi
-    fi
-  done < <(find "$MUSIC_DIR" -type f \( -name "*.webm" -o -name "*.opus" -o -name "*.m4a" \) -print0)
+    done < <(find "$dir" -maxdepth 1 -type f -name "*.${ext}" -print0)
+    rm -f "$intermediate"
+    echo "[$(date -Is)] Removed intermediate: $dir_name.$ext" >> "$LOG_FILE"
+  done < <(
+    while IFS= read -r -d '' f; do
+      s=$(basename "${f%.*}")
+      d=$(basename "$(dirname "$f")")
+      [ "$s" = "$d" ] && printf '%s\0' "$f"
+    done < <(find "$MUSIC_DIR" -type f \( -name "*.webm" -o -name "*.opus" -o -name "*.m4a" \) -print0)
+  )
 fi
 
 NEW_COUNT_AFTER=$(wc -l < "$ARCHIVE_FILE" 2>/dev/null || echo 0)
