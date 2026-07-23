@@ -104,9 +104,42 @@ if [ -n "$DATE_AFTER" ]; then
 fi
 
 if [ -n "$SPLIT_CHAPTERS" ]; then
+  # Write a per-episode helper that yt-dlp runs via --exec after_video, i.e.
+  # immediately after each video is split — not after the whole playlist.
+  # It fixes title/track metadata (yt-dlp embeds the episode title in every
+  # chapter file) and deletes the intermediate file that yt-dlp leaves behind.
+  FIX_SCRIPT="$STATE_DIR/fix-chapters.sh"
+  cat > "$FIX_SCRIPT" << 'FIXEOF'
+#!/usr/bin/env bash
+intermediate="$1"
+[ -f "$intermediate" ] || exit 0
+dir=$(dirname "$intermediate")
+dir_name=$(basename "$dir")
+stem=$(basename "${intermediate%.*}")
+ext="${intermediate##*.}"
+[ "$stem" = "$dir_name" ] || exit 0
+while IFS= read -r -d '' fpath; do
+  fstem=$(basename "${fpath%.*}")
+  [ "$fstem" = "$dir_name" ] && continue
+  if [[ "$fstem" =~ ^([0-9][0-9])\ -\ (.+)$ ]]; then
+    track=$((10#${BASH_REMATCH[1]}))
+    title="${BASH_REMATCH[2]}"
+    tmp="${fpath}.tmp.${ext}"
+    if ffmpeg -y -loglevel error -i "$fpath" -map 0 -c copy \
+          -metadata title="$title" -metadata track="$track" "$tmp" 2>&1; then
+      mv "$tmp" "$fpath"
+    else
+      rm -f "$tmp"
+    fi
+  fi
+done < <(find "$dir" -maxdepth 1 -type f -name "*.${ext}" -print0)
+rm -f "$intermediate"
+FIXEOF
+  chmod +x "$FIX_SCRIPT"
   YTDLP_ARGS+=(
     --split-chapters
     --output "chapter:$CHAPTER_TEMPLATE"
+    --exec "after_video:bash $FIX_SCRIPT {}"
   )
 fi
 
