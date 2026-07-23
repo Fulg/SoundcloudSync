@@ -50,9 +50,9 @@ echo "[$(date -Is)] Checking for new tracks..." >> "$LOG_FILE"
 NEW_COUNT_BEFORE=$(wc -l < "$ARCHIVE_FILE" 2>/dev/null || echo 0)
 
 if [ -n "$TITLE_FILTER" ]; then
-  # Each matched track gets its own subfolder named after the track title,
-  # e.g. /music/Above & Beyond/Group Therapy 686/Group Therapy 686 (...).m4a
-  OUTPUT_TEMPLATE="$MUSIC_DIR/%(uploader)s/%(title)s/%(title)s.%(ext)s"
+  # All matched tracks share one folder; disc number differentiates episodes.
+  # e.g. /music/Above & Beyond/Group Therapy/Group Therapy 686 (...).m4a
+  OUTPUT_TEMPLATE="$MUSIC_DIR/%(uploader)s/$TITLE_FILTER/%(title)s.%(ext)s"
 else
   OUTPUT_TEMPLATE="$MUSIC_DIR/%(uploader)s/%(title)s.%(ext)s"
 fi
@@ -76,7 +76,8 @@ fi
 if [ -n "$TITLE_FILTER" ]; then
   YTDLP_ARGS+=(
     --match-filter "title*=$TITLE_FILTER"
-    --parse-metadata "%(title)s:%(meta_album)s"
+    --parse-metadata "${TITLE_FILTER}:%(meta_album)s"
+    --parse-metadata "%(title)s:${TITLE_FILTER} (?P<meta_disc>\d+)"
   )
 else
   YTDLP_ARGS+=(--parse-metadata "%(uploader)s:%(meta_album)s")
