@@ -101,6 +101,11 @@ fi
 
 if [ -n "$DATE_AFTER" ]; then
   YTDLP_ARGS+=(--dateafter "$DATE_AFTER")
+  # In default (newest-first) order, the first rejection means all remaining
+  # items are also too old — stop immediately instead of checking every one.
+  # With PLAYLIST_REVERSE the oldest items come first, so this would fire
+  # on the very first video and abort the run.
+  [ -z "$PLAYLIST_REVERSE" ] && YTDLP_ARGS+=(--break-on-reject)
 fi
 
 if [ -n "$SPLIT_CHAPTERS" ]; then
