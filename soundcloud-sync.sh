@@ -17,6 +17,10 @@
 # --------------------------------------------------------------------------
 set -euo pipefail
 
+# Busybox crond strips the container environment. Source the config file written
+# by the entrypoint so cron-fired runs have the same variables as the startup run.
+[ -f /state/.env ] && . /state/.env
+
 ### ---- CONFIG (via environment variables) ----
 
 SOUNDCLOUD_URL="${SOUNDCLOUD_URL:-https://soundcloud.com/ARTIST_NAME/tracks}"
@@ -28,6 +32,7 @@ NAVIDROME_PASS="${NAVIDROME_PASS:-changeme}"
 TITLE_FILTER="${TITLE_FILTER:-}"
 DATE_AFTER="${DATE_AFTER:-}"
 SPLIT_CHAPTERS="${SPLIT_CHAPTERS:-}"
+PLAYLIST_REVERSE="${PLAYLIST_REVERSE:-}"
 
 ### ---- END CONFIG ----
 
@@ -76,11 +81,14 @@ YTDLP_ARGS=(
   --cache-dir "$CACHE_DIR"
   --download-archive "$ARCHIVE_FILE"
   --output "$OUTPUT_TEMPLATE"
-  --playlist-reverse
   --no-overwrites
   --ignore-errors
   --sleep-interval 2
 )
+
+if [ -n "$PLAYLIST_REVERSE" ]; then
+  YTDLP_ARGS+=(--playlist-reverse)
+fi
 
 if [ -n "$DATE_AFTER" ]; then
   YTDLP_ARGS+=(--dateafter "$DATE_AFTER")

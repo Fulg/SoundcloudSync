@@ -27,6 +27,7 @@ ENV SOUNDCLOUD_URL="https://soundcloud.com/ARTIST_NAME/tracks" \
     TITLE_FILTER="" \
     DATE_AFTER="" \
     SPLIT_CHAPTERS="" \
+    PLAYLIST_REVERSE="" \
     PUID=99 \
     PGID=100 \
     UMASK=022
