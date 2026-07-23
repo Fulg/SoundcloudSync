@@ -107,8 +107,6 @@ if [ -n "$SPLIT_CHAPTERS" ]; then
   YTDLP_ARGS+=(
     --split-chapters
     --output "chapter:$CHAPTER_TEMPLATE"
-    --parse-metadata "%(section_title)s:%(meta_title)s"
-    --parse-metadata "%(section_number)s:%(meta_track)s"
   )
 fi
 
@@ -122,7 +120,36 @@ else
   YTDLP_ARGS+=(--parse-metadata "%(uploader)s:%(meta_album)s")
 fi
 
+SCRIPT_START=$(date +%s)
 yt-dlp "${YTDLP_ARGS[@]}" "$SOUNDCLOUD_URL" >> "$LOG_FILE" 2>&1
+
+# When splitting chapters, yt-dlp leaves the intermediate file in place and
+# embeds the episode title (not the chapter title) in each chapter file's
+# metadata. Fix both: delete the intermediate file and re-mux each chapter
+# file with the correct title and track number parsed from its filename.
+if [ -n "$SPLIT_CHAPTERS" ]; then
+  while IFS= read -r -d '' fpath; do
+    stem=$(basename "${fpath%.*}")
+    dir_name=$(basename "$(dirname "$fpath")")
+    ext="${fpath##*.}"
+    if [ "$stem" = "$dir_name" ]; then
+      echo "[$(date -Is)] Removing intermediate: $fpath" >> "$LOG_FILE"
+      rm -f "$fpath"
+    elif [ "$(stat -c %Y "$fpath" 2>/dev/null || echo 0)" -ge "$SCRIPT_START" ] \
+         && [[ "$stem" =~ ^([0-9]{2})\ -\ (.+)$ ]]; then
+      track=$((10#${BASH_REMATCH[1]}))
+      title="${BASH_REMATCH[2]}"
+      tmp="${fpath}.tmp.${ext}"
+      if ffmpeg -y -loglevel error -i "$fpath" -map 0 -c copy \
+            -metadata title="$title" -metadata tracknumber="$track" "$tmp" 2>>"$LOG_FILE"; then
+        mv "$tmp" "$fpath"
+        echo "[$(date -Is)] Fixed metadata: track=$track title=$title" >> "$LOG_FILE"
+      else
+        rm -f "$tmp"
+      fi
+    fi
+  done < <(find "$MUSIC_DIR" -type f \( -name "*.webm" -o -name "*.opus" -o -name "*.m4a" \) -print0)
+fi
 
 NEW_COUNT_AFTER=$(wc -l < "$ARCHIVE_FILE" 2>/dev/null || echo 0)
 NEW_TRACKS=$((NEW_COUNT_AFTER - NEW_COUNT_BEFORE))
