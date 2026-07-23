@@ -22,6 +22,24 @@ echo "[init] Running as $USER_NAME (uid=$PUID gid=$PGID)"
 # Fix ownership of the mounted volumes so the app user can write to them
 chown -R "$PUID:$PGID" /music /state
 
+# Persist script config to /state/.env so cron-fired runs can read it.
+# Busybox crond strips the container environment entirely, so without this
+# every cron run would use placeholder defaults instead of configured values.
+{
+  printf 'export SOUNDCLOUD_URL=%q\n'   "${SOUNDCLOUD_URL:-}"
+  printf 'export MUSIC_DIR=%q\n'        "${MUSIC_DIR:-/music}"
+  printf 'export STATE_DIR=%q\n'        "${STATE_DIR:-/state}"
+  printf 'export NAVIDROME_URL=%q\n'    "${NAVIDROME_URL:-}"
+  printf 'export NAVIDROME_USER=%q\n'   "${NAVIDROME_USER:-}"
+  printf 'export NAVIDROME_PASS=%q\n'   "${NAVIDROME_PASS:-}"
+  printf 'export TITLE_FILTER=%q\n'     "${TITLE_FILTER:-}"
+  printf 'export DATE_AFTER=%q\n'       "${DATE_AFTER:-}"
+  printf 'export SPLIT_CHAPTERS=%q\n'   "${SPLIT_CHAPTERS:-}"
+  printf 'export PLAYLIST_REVERSE=%q\n' "${PLAYLIST_REVERSE:-}"
+} > /state/.env
+chown "$PUID:$PGID" /state/.env
+chmod 600 /state/.env
+
 # Bake the resolved umask value into the cron command — busybox crond does not
 # inherit the container environment, so we can't rely on the UMASK variable there
 echo "${CRON_SCHEDULE:-0 */6 * * *} sh -c 'umask $UMASK && /usr/local/bin/soundcloud-sync.sh'" > "/etc/crontabs/$USER_NAME"
