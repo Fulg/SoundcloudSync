@@ -26,6 +26,11 @@ chown -R "$PUID:$PGID" /music /state
 # inherit the container environment, so we can't rely on the UMASK variable there
 echo "${CRON_SCHEDULE:-0 */6 * * *} sh -c 'umask $UMASK && /usr/local/bin/soundcloud-sync.sh'" > "/etc/crontabs/$USER_NAME"
 
+# Clear any lock file left over from a previous container run. The lock is
+# stored on the persistent /state volume, but a restarting container always
+# has a fresh process namespace so any existing lock is guaranteed stale.
+rm -f /state/sync.lock
+
 # Run immediately on startup so you don't wait for the first cron tick
 echo "[startup] Running initial sync..."
 umask "$UMASK"
