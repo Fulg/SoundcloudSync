@@ -79,6 +79,7 @@ YTDLP_ARGS=(
   --playlist-reverse
   --no-overwrites
   --ignore-errors
+  --sleep-interval 2
 )
 
 if [ -n "$DATE_AFTER" ]; then
