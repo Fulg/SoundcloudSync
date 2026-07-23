@@ -107,6 +107,7 @@ if [ -n "$SPLIT_CHAPTERS" ]; then
   YTDLP_ARGS+=(
     --split-chapters
     --output "chapter:$CHAPTER_TEMPLATE"
+    --parse-metadata "%(section_title)s:%(meta_title)s"
     --parse-metadata "%(section_number)s:%(meta_track)s"
   )
 fi
