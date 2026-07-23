@@ -60,11 +60,13 @@ NEW_COUNT_BEFORE=$(wc -l < "$ARCHIVE_FILE" 2>/dev/null || echo 0)
 
 if [ -n "$SPLIT_CHAPTERS" ]; then
   if [ -n "$TITLE_FILTER" ]; then
-    # e.g. /music/Above & Beyond/Group Therapy/Group Therapy 686 (...)/01 - Song Title.m4a
-    OUTPUT_TEMPLATE="$MUSIC_DIR/%(uploader)s/$TITLE_FILTER/%(title)s/%(section_number)02d - %(section_title)s.%(ext)s"
+    # Intermediate download (deleted after splitting)
+    OUTPUT_TEMPLATE="$MUSIC_DIR/%(uploader)s/$TITLE_FILTER/%(title)s/%(title)s.%(ext)s"
+    # One file per chapter: /music/Above & Beyond/Group Therapy/Group Therapy 686 (...)/01 - Song Title.opus
+    CHAPTER_TEMPLATE="$MUSIC_DIR/%(uploader)s/$TITLE_FILTER/%(title)s/%(section_number)02d - %(section_title)s.%(ext)s"
   else
-    # e.g. /music/Above & Beyond/Group Therapy 686 (...)/01 - Song Title.m4a
-    OUTPUT_TEMPLATE="$MUSIC_DIR/%(uploader)s/%(title)s/%(section_number)02d - %(section_title)s.%(ext)s"
+    OUTPUT_TEMPLATE="$MUSIC_DIR/%(uploader)s/%(title)s/%(title)s.%(ext)s"
+    CHAPTER_TEMPLATE="$MUSIC_DIR/%(uploader)s/%(title)s/%(section_number)02d - %(section_title)s.%(ext)s"
   fi
 elif [ -n "$TITLE_FILTER" ]; then
   # e.g. /music/Above & Beyond/Group Therapy/Group Therapy 686 (...).m4a
@@ -97,6 +99,7 @@ fi
 if [ -n "$SPLIT_CHAPTERS" ]; then
   YTDLP_ARGS+=(
     --split-chapters
+    --output "chapter:$CHAPTER_TEMPLATE"
     --parse-metadata "%(section_number)s:%(meta_track)s"
   )
 fi
