@@ -77,7 +77,6 @@ else
 fi
 
 YTDLP_ARGS=(
-  --extract-audio
   --embed-metadata
   --embed-thumbnail
   --cache-dir "$CACHE_DIR"
@@ -87,6 +86,14 @@ YTDLP_ARGS=(
   --ignore-errors
   --sleep-interval 2
 )
+
+if [ -n "$SPLIT_CHAPTERS" ]; then
+  # Download audio-only directly — avoids the extract-audio/split-chapters ordering
+  # issue where ffmpeg can't split a mutagen-modified .opus file back into .opus chapters
+  YTDLP_ARGS+=(--format "bestaudio")
+else
+  YTDLP_ARGS+=(--extract-audio)
+fi
 
 if [ -n "$PLAYLIST_REVERSE" ]; then
   YTDLP_ARGS+=(--playlist-reverse)
