@@ -11,6 +11,7 @@ RUN apk add --no-cache \
     util-linux \
     nodejs \
     unzip \
+    gcompat \
     && pip3 install --break-system-packages yt-dlp curl-cffi \
     && curl -fsSL https://github.com/denoland/deno/releases/latest/download/deno-x86_64-unknown-linux-gnu.zip \
          -o /tmp/deno.zip \
