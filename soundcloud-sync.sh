@@ -79,7 +79,6 @@ YTDLP_ARGS=(
   --playlist-reverse
   --no-overwrites
   --ignore-errors
-  --js-runtimes node
 )
 
 if [ -n "$DATE_AFTER" ]; then
