@@ -63,11 +63,14 @@ if [ -n "$SPLIT_CHAPTERS" ]; then
   if [ -n "$TITLE_FILTER" ]; then
     # Intermediate download (deleted after splitting)
     OUTPUT_TEMPLATE="$MUSIC_DIR/%(uploader)s/$TITLE_FILTER/%(title)s/%(title)s.%(ext)s"
-    # One file per chapter: /music/Above & Beyond/Group Therapy/Group Therapy 686 (...)/01 - Song Title.opus
+    # One file per chapter: /music/Above & Beyond/Group Therapy/Group Therapy 686 (...)/01 - Song Title.webm
     CHAPTER_TEMPLATE="$MUSIC_DIR/%(uploader)s/$TITLE_FILTER/%(title)s/%(section_number)02d - %(section_title)s.%(ext)s"
+    # cover.jpg in each episode folder — picked up by Audiobookshelf Book library as cover art
+    THUMBNAIL_TEMPLATE="$MUSIC_DIR/%(uploader)s/$TITLE_FILTER/%(title)s/cover.%(ext)s"
   else
     OUTPUT_TEMPLATE="$MUSIC_DIR/%(uploader)s/%(title)s/%(title)s.%(ext)s"
     CHAPTER_TEMPLATE="$MUSIC_DIR/%(uploader)s/%(title)s/%(section_number)02d - %(section_title)s.%(ext)s"
+    THUMBNAIL_TEMPLATE="$MUSIC_DIR/%(uploader)s/%(title)s/cover.%(ext)s"
   fi
 elif [ -n "$TITLE_FILTER" ]; then
   # e.g. /music/Above & Beyond/Group Therapy/Group Therapy 686 (...).m4a
@@ -90,8 +93,14 @@ YTDLP_ARGS=(
 if [ -n "$SPLIT_CHAPTERS" ]; then
   # Download audio-only directly — avoids the extract-audio/split-chapters ordering
   # issue where ffmpeg can't split a mutagen-modified .opus file back into .opus chapters.
-  # --embed-thumbnail is excluded: yt-dlp's thumbnail embedder does not support .webm.
-  YTDLP_ARGS+=(--format "bestaudio")
+  # Thumbnail is saved as cover.jpg alongside the chapter files rather than embedded
+  # (WebM does not support embedded thumbnails via yt-dlp).
+  YTDLP_ARGS+=(
+    --format "bestaudio"
+    --write-thumbnail
+    --convert-thumbnails jpg
+    --output "thumbnail:$THUMBNAIL_TEMPLATE"
+  )
 else
   YTDLP_ARGS+=(--extract-audio --embed-thumbnail)
 fi
@@ -110,55 +119,49 @@ if [ -n "$DATE_AFTER" ]; then
 fi
 
 if [ -n "$SPLIT_CHAPTERS" ]; then
-  # Write a per-episode helper that yt-dlp runs via --exec after_video, i.e.
-  # immediately after each video is split — not after the whole playlist.
-  # It fixes title/track metadata (yt-dlp embeds the episode title in every
-  # chapter file) and deletes the intermediate file that yt-dlp leaves behind.
+  # Write a per-episode helper that yt-dlp runs via --exec after_video.
+  # Rather than relying on {}, which yt-dlp may substitute with a chapter path
+  # instead of the intermediate after FFmpegSplitChaptersPP runs, we pass
+  # MUSIC_DIR and LOG_FILE explicitly and scan for orphaned intermediates.
   FIX_SCRIPT="$STATE_DIR/fix-chapters.sh"
   cat > "$FIX_SCRIPT" << 'FIXEOF'
 #!/usr/bin/env bash
-# yt-dlp calls this once per output file via --exec after_video.
-# With --split-chapters, that means once per chapter file (not once per video).
-# Handle both cases: chapter file (fix this file) and intermediate file (fix all).
-fpath="$1"
-[ -f "$fpath" ] || exit 0
-dir=$(dirname "$fpath")
-dir_name=$(basename "$dir")
-stem=$(basename "${fpath%.*}")
-ext="${fpath##*.}"
-
-fix_chapter() {
-  local f="$1" s tmp
+# Called by yt-dlp after each video is split into chapters.
+# Scans music_dir for intermediate files (name == parent dir name), rewrites
+# chapter metadata (title and track number), then deletes each intermediate.
+music_dir="$1"
+log_file="$2"
+while IFS= read -r -d '' f; do
   s=$(basename "${f%.*}")
-  [[ "$s" =~ ^([0-9][0-9])\ -\ (.+)$ ]] || return 0
-  local track=$((10#${BASH_REMATCH[1]})) title="${BASH_REMATCH[2]}"
-  tmp="${f}.tmp.${ext}"
-  if ffmpeg -y -loglevel error -i "$f" -map 0 -c copy \
-        -metadata title="$title" -metadata track="$track" "$tmp" 2>&1; then
-    mv "$tmp" "$f"
-  else
-    rm -f "$tmp"
-  fi
-}
-
-if [[ "$stem" =~ ^([0-9][0-9])\ -\ (.+)$ ]]; then
-  # Called with a chapter file: fix this file, then delete the intermediate.
-  fix_chapter "$fpath"
-  rm -f "$dir/$dir_name.$ext" 2>/dev/null
-elif [ "$stem" = "$dir_name" ]; then
-  # Called with the intermediate file: fix all chapters, then delete self.
-  while IFS= read -r -d '' f; do
-    [[ $(basename "${f%.*}") = "$dir_name" ]] && continue
-    fix_chapter "$f"
+  d=$(basename "$(dirname "$f")")
+  [ "$s" = "$d" ] || continue
+  dir=$(dirname "$f")
+  ext="${f##*.}"
+  echo "[$(date -Is)] [fix-chapters] Processing: $s" >> "$log_file"
+  while IFS= read -r -d '' chapter; do
+    cstem=$(basename "${chapter%.*}")
+    [ "$cstem" = "$s" ] && continue
+    [[ "$cstem" =~ ^([0-9][0-9])\ -\ (.+)$ ]] || continue
+    track=$((10#${BASH_REMATCH[1]}))
+    title="${BASH_REMATCH[2]}"
+    tmp="${chapter}.tmp.${ext}"
+    if ffmpeg -y -loglevel error -i "$chapter" -map 0 -c copy \
+          -metadata title="$title" -metadata track="$track" "$tmp" >> "$log_file" 2>&1; then
+      mv "$tmp" "$chapter"
+      echo "[$(date -Is)] [fix-chapters] Fixed: track=$track title=$title" >> "$log_file"
+    else
+      rm -f "$tmp"
+    fi
   done < <(find "$dir" -maxdepth 1 -type f -name "*.${ext}" -print0)
-  rm -f "$fpath"
-fi
+  rm -f "$f"
+  echo "[$(date -Is)] [fix-chapters] Removed intermediate: $s.$ext" >> "$log_file"
+done < <(find "$music_dir" -type f \( -name "*.webm" -o -name "*.opus" -o -name "*.m4a" \) -print0)
 FIXEOF
   chmod +x "$FIX_SCRIPT"
   YTDLP_ARGS+=(
     --split-chapters
     --output "chapter:$CHAPTER_TEMPLATE"
-    --exec "after_video:bash $FIX_SCRIPT {}"
+    --exec "after_video:bash $FIX_SCRIPT $MUSIC_DIR $LOG_FILE"
   )
 fi
 
