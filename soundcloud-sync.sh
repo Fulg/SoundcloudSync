@@ -146,7 +146,7 @@ while IFS= read -r -d '' f; do
     title="${BASH_REMATCH[2]}"
     tmp="${chapter}.tmp.${ext}"
     if ffmpeg -y -loglevel error -i "$chapter" -map 0 -c copy \
-          -metadata title="$title" -metadata track="$track" "$tmp" >> "$log_file" 2>&1; then
+          -metadata title="$title" -metadata track="$track" -metadata ALBUM="$s" "$tmp" >> "$log_file" 2>&1; then
       mv "$tmp" "$chapter"
       echo "[$(date -Is)] [fix-chapters] Fixed: track=$track title=$title" >> "$log_file"
     else
@@ -168,7 +168,7 @@ fi
 if [ -n "$TITLE_FILTER" ]; then
   YTDLP_ARGS+=(
     --match-filter "title*=$TITLE_FILTER"
-    --parse-metadata "${TITLE_FILTER}:%(meta_album)s"
+    --parse-metadata "%(title)s:%(meta_album)s"
     --parse-metadata "%(title)s:${TITLE_FILTER} (?P<meta_disc>\d+)"
   )
 else
@@ -197,7 +197,7 @@ if [ -n "$SPLIT_CHAPTERS" ]; then
         title="${BASH_REMATCH[2]}"
         tmp="${fpath}.tmp.${ext}"
         if ffmpeg -y -loglevel error -i "$fpath" -map 0 -c copy \
-              -metadata title="$title" -metadata track="$track" "$tmp" 2>>"$LOG_FILE"; then
+              -metadata title="$title" -metadata track="$track" -metadata ALBUM="$dir_name" "$tmp" 2>>"$LOG_FILE"; then
           mv "$tmp" "$fpath"
           echo "[$(date -Is)] Fixed: track=$track title=$title" >> "$LOG_FILE"
         else
