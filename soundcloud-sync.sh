@@ -1,18 +1,18 @@
 #!/usr/bin/env bash
 #
-# sync.sh
+# soundcloud-sync.sh
 #
 # Polls a SoundCloud artist page or YouTube playlist for new tracks, downloads
-# any that aren't already in the archive, drops them into your Navidrome music
-# folder, and triggers a rescan. Meant to be run periodically via cron.
+# any that aren't already in the archive, and triggers an Audiobookshelf rescan.
+# Meant to be run periodically via cron.
 #
-# When SPLIT_CHAPTERS=true, each downloaded video is split into one audio file
+# When SPLIT_CHAPTERS is set, each downloaded video is split into one audio file
 # per chapter using embedded timestamps (useful for YouTube DJ mixes).
 #
 # Requirements:
 #   - yt-dlp   (pip install -U yt-dlp   or  brew install yt-dlp)
 #   - ffmpeg   (for audio extraction / tagging)
-#   - curl, jq (for the Navidrome API call)
+#   - curl     (for the Audiobookshelf API call)
 #
 # --------------------------------------------------------------------------
 set -euo pipefail
