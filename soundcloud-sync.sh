@@ -26,9 +26,9 @@ set -euo pipefail
 SOUNDCLOUD_URL="${SOUNDCLOUD_URL:-https://soundcloud.com/ARTIST_NAME/tracks}"
 MUSIC_DIR="${MUSIC_DIR:-/music}"
 STATE_DIR="${STATE_DIR:-/state}"
-NAVIDROME_URL="${NAVIDROME_URL:-http://localhost:4533}"
-NAVIDROME_USER="${NAVIDROME_USER:-admin}"
-NAVIDROME_PASS="${NAVIDROME_PASS:-changeme}"
+AUDIOBOOKSHELF_URL="${AUDIOBOOKSHELF_URL:-http://localhost:13378}"
+AUDIOBOOKSHELF_TOKEN="${AUDIOBOOKSHELF_TOKEN:-}"
+AUDIOBOOKSHELF_LIBRARY_ID="${AUDIOBOOKSHELF_LIBRARY_ID:-}"
 TITLE_FILTER="${TITLE_FILTER:-}"
 DATE_AFTER="${DATE_AFTER:-}"
 SPLIT_CHAPTERS="${SPLIT_CHAPTERS:-}"
@@ -218,17 +218,13 @@ NEW_TRACKS=$((NEW_COUNT_AFTER - NEW_COUNT_BEFORE))
 
 echo "[$(date -Is)] Done. New tracks this run: $NEW_TRACKS" >> "$LOG_FILE"
 
-# Only bother pinging Navidrome if something actually changed.
-if [ "$NEW_TRACKS" -gt 0 ]; then
-  echo "[$(date -Is)] Triggering Navidrome scan..." >> "$LOG_FILE"
+# Only bother pinging Audiobookshelf if something actually changed.
+if [ "$NEW_TRACKS" -gt 0 ] && [ -n "$AUDIOBOOKSHELF_TOKEN" ] && [ -n "$AUDIOBOOKSHELF_LIBRARY_ID" ]; then
+  echo "[$(date -Is)] Triggering Audiobookshelf scan..." >> "$LOG_FILE"
 
-  TOKEN=$(curl -s --connect-timeout 5 --max-time 10 -X POST "$NAVIDROME_URL/auth/login" \
-    -H "Content-Type: application/json" \
-    -d "{\"username\":\"$NAVIDROME_USER\",\"password\":\"$NAVIDROME_PASS\"}" \
-    | jq -r '.token')
-
-  curl -s --connect-timeout 5 --max-time 10 -X POST "$NAVIDROME_URL/api/scan" \
-    -H "x-nd-authorization: Bearer $TOKEN" >> "$LOG_FILE" 2>&1
+  curl -s --connect-timeout 5 --max-time 10 \
+    -X POST "$AUDIOBOOKSHELF_URL/api/libraries/$AUDIOBOOKSHELF_LIBRARY_ID/scan" \
+    -H "Authorization: Bearer $AUDIOBOOKSHELF_TOKEN" >> "$LOG_FILE" 2>&1
 
   echo "[$(date -Is)] Scan triggered." >> "$LOG_FILE"
 fi

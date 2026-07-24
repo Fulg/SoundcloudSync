@@ -24,9 +24,9 @@ test: build
 		-e SOUNDCLOUD_URL="$(TEST_URL)" \
 		-e MUSIC_DIR=/music \
 		-e STATE_DIR=/state \
-		-e NAVIDROME_URL=http://localhost:1 \
-		-e NAVIDROME_USER=test \
-		-e NAVIDROME_PASS=test \
+		-e AUDIOBOOKSHELF_URL=http://localhost:1 \
+		-e AUDIOBOOKSHELF_TOKEN="" \
+		-e AUDIOBOOKSHELF_LIBRARY_ID="" \
 		-e SPLIT_CHAPTERS="$(SPLIT_CHAPTERS)" \
 		-e TITLE_FILTER="$(TITLE_FILTER)" \
 		-e DATE_AFTER="$(DATE_AFTER)" \

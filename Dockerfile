@@ -4,7 +4,6 @@ RUN apk add --no-cache \
     bash \
     ffmpeg \
     curl \
-    jq \
     python3 \
     py3-pip \
     su-exec \
@@ -20,9 +19,9 @@ VOLUME ["/music", "/state"]
 ENV SOUNDCLOUD_URL="https://soundcloud.com/ARTIST_NAME/tracks" \
     MUSIC_DIR="/music" \
     STATE_DIR="/state" \
-    NAVIDROME_URL="http://localhost:4533" \
-    NAVIDROME_USER="admin" \
-    NAVIDROME_PASS="changeme" \
+    AUDIOBOOKSHELF_URL="http://localhost:13378" \
+    AUDIOBOOKSHELF_TOKEN="" \
+    AUDIOBOOKSHELF_LIBRARY_ID="" \
     CRON_SCHEDULE="0 */6 * * *" \
     TITLE_FILTER="" \
     DATE_AFTER="" \
