@@ -38,6 +38,7 @@ PLAYLIST_REVERSE="${PLAYLIST_REVERSE:-}"
 
 mkdir -p "$MUSIC_DIR" "$STATE_DIR"
 ARCHIVE_FILE="$STATE_DIR/downloaded.txt"
+touch "$ARCHIVE_FILE"
 LOG_FILE="$STATE_DIR/sync.log"
 CACHE_DIR="$STATE_DIR/cache"
 LOCK_FILE="$STATE_DIR/sync.lock"
@@ -56,7 +57,7 @@ echo "[$(date -Is)] Checking for new tracks..." >> "$LOG_FILE"
 # Download any tracks not already in the archive.
 # --download-archive tracks IDs across runs so re-runs are cheap no-ops
 # unless there's genuinely something new.
-NEW_COUNT_BEFORE=$(wc -l < "$ARCHIVE_FILE" 2>/dev/null || echo 0)
+NEW_COUNT_BEFORE=$(wc -l < "$ARCHIVE_FILE")
 
 if [ -n "$SPLIT_CHAPTERS" ]; then
   if [ -n "$TITLE_FILTER" ]; then
@@ -116,29 +117,42 @@ if [ -n "$SPLIT_CHAPTERS" ]; then
   FIX_SCRIPT="$STATE_DIR/fix-chapters.sh"
   cat > "$FIX_SCRIPT" << 'FIXEOF'
 #!/usr/bin/env bash
-intermediate="$1"
-[ -f "$intermediate" ] || exit 0
-dir=$(dirname "$intermediate")
+# yt-dlp calls this once per output file via --exec after_video.
+# With --split-chapters, that means once per chapter file (not once per video).
+# Handle both cases: chapter file (fix this file) and intermediate file (fix all).
+fpath="$1"
+[ -f "$fpath" ] || exit 0
+dir=$(dirname "$fpath")
 dir_name=$(basename "$dir")
-stem=$(basename "${intermediate%.*}")
-ext="${intermediate##*.}"
-[ "$stem" = "$dir_name" ] || exit 0
-while IFS= read -r -d '' fpath; do
-  fstem=$(basename "${fpath%.*}")
-  [ "$fstem" = "$dir_name" ] && continue
-  if [[ "$fstem" =~ ^([0-9][0-9])\ -\ (.+)$ ]]; then
-    track=$((10#${BASH_REMATCH[1]}))
-    title="${BASH_REMATCH[2]}"
-    tmp="${fpath}.tmp.${ext}"
-    if ffmpeg -y -loglevel error -i "$fpath" -map 0 -c copy \
-          -metadata title="$title" -metadata track="$track" "$tmp" 2>&1; then
-      mv "$tmp" "$fpath"
-    else
-      rm -f "$tmp"
-    fi
+stem=$(basename "${fpath%.*}")
+ext="${fpath##*.}"
+
+fix_chapter() {
+  local f="$1" s tmp
+  s=$(basename "${f%.*}")
+  [[ "$s" =~ ^([0-9][0-9])\ -\ (.+)$ ]] || return 0
+  local track=$((10#${BASH_REMATCH[1]})) title="${BASH_REMATCH[2]}"
+  tmp="${f}.tmp.${ext}"
+  if ffmpeg -y -loglevel error -i "$f" -map 0 -c copy \
+        -metadata title="$title" -metadata track="$track" "$tmp" 2>&1; then
+    mv "$tmp" "$f"
+  else
+    rm -f "$tmp"
   fi
-done < <(find "$dir" -maxdepth 1 -type f -name "*.${ext}" -print0)
-rm -f "$intermediate"
+}
+
+if [[ "$stem" =~ ^([0-9][0-9])\ -\ (.+)$ ]]; then
+  # Called with a chapter file: fix this file, then delete the intermediate.
+  fix_chapter "$fpath"
+  rm -f "$dir/$dir_name.$ext" 2>/dev/null
+elif [ "$stem" = "$dir_name" ]; then
+  # Called with the intermediate file: fix all chapters, then delete self.
+  while IFS= read -r -d '' f; do
+    [[ $(basename "${f%.*}") = "$dir_name" ]] && continue
+    fix_chapter "$f"
+  done < <(find "$dir" -maxdepth 1 -type f -name "*.${ext}" -print0)
+  rm -f "$fpath"
+fi
 FIXEOF
   chmod +x "$FIX_SCRIPT"
   YTDLP_ARGS+=(
@@ -199,7 +213,7 @@ if [ -n "$SPLIT_CHAPTERS" ]; then
   )
 fi
 
-NEW_COUNT_AFTER=$(wc -l < "$ARCHIVE_FILE" 2>/dev/null || echo 0)
+NEW_COUNT_AFTER=$(wc -l < "$ARCHIVE_FILE")
 NEW_TRACKS=$((NEW_COUNT_AFTER - NEW_COUNT_BEFORE))
 
 echo "[$(date -Is)] Done. New tracks this run: $NEW_TRACKS" >> "$LOG_FILE"
@@ -208,12 +222,12 @@ echo "[$(date -Is)] Done. New tracks this run: $NEW_TRACKS" >> "$LOG_FILE"
 if [ "$NEW_TRACKS" -gt 0 ]; then
   echo "[$(date -Is)] Triggering Navidrome scan..." >> "$LOG_FILE"
 
-  TOKEN=$(curl -s -X POST "$NAVIDROME_URL/auth/login" \
+  TOKEN=$(curl -s --connect-timeout 5 --max-time 10 -X POST "$NAVIDROME_URL/auth/login" \
     -H "Content-Type: application/json" \
     -d "{\"username\":\"$NAVIDROME_USER\",\"password\":\"$NAVIDROME_PASS\"}" \
     | jq -r '.token')
 
-  curl -s -X POST "$NAVIDROME_URL/api/scan" \
+  curl -s --connect-timeout 5 --max-time 10 -X POST "$NAVIDROME_URL/api/scan" \
     -H "x-nd-authorization: Bearer $TOKEN" >> "$LOG_FILE" 2>&1
 
   echo "[$(date -Is)] Scan triggered." >> "$LOG_FILE"
